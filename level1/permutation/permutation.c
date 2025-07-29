@@ -1,53 +1,54 @@
-#include <unistd.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
-void sorted(char *str){
-    char tmp;
-    for(int i = 0; str[i]; i++){
-        for(int j = i+1; str[j]; j++){
-            if(str[i] > str[j]){
-                tmp = str[i];
-                str[i] = str[j];
-                str[j] = tmp;
-            }
-        }
-    }
-}
-
-void perm(char *str , char *result , int *used, int dep, int len)
+void swap(char *a, char *b)
 {
-    if (dep == len)
+    char temp = *a;
+    *a = *b;
+    *b = temp;
+}
+
+void permute(char *str, int l, int r, char **result, int *count)
+{
+    if (l == r)
     {
-        for(int i = 0; i < len; i++)
-        {
-            write(1, &result[i], 1);
-        }
-        write(1,"\n",1);
-        return;
+        result[*count] = malloc(strlen(str) + 1);
+        strcpy(result[*count], str);
+        (*count)++;
     }
-    for (int i = 0; i < len; i++)
+    else
     {
-        if (used[i]) 
-            continue;
-        used[i] = 1;
-        result[dep] = str[i];
-        perm(str, result , used , dep + 1 , len);
-        used[i] = 0;        
+        for (int i = l; i <= r; i++)
+        {
+            swap(&str[l], &str[i]);
+            permute(str, l + 1, r, result, count);
+            swap(&str[l], &str[i]);
+        }
     }
 }
 
-int main(int argc, char **argv) {
-    if (argc != 2)
-        return 1;
+int compare(const void *a, const void *b)
+{
+    return strcmp(*(char**)a, *(char**)b);
+}
 
-    int i = 0;
-    while (argv[1][i])
-        i++;
-    int len = i;
-    char *result = malloc(len + 1);
-    int *used = calloc(len, sizeof(int));
-    sorted(argv[1]);
-    perm(argv[1], result, used, 0, len);    
+int main(int ac, char **av)
+{
+    if (ac != 2) return 1;
+    char *str = av[1];
+    int len = strlen(str);
+    int fact = 1;
+    for (int i = 2; i <= len; i++) fact *= i;
+    char **result = malloc(fact * sizeof(char*));
+    int count = 0;
+    permute(str, 0, len - 1, result, &count);
+    qsort(result, count, sizeof(char*), compare);
+    for (int i = 0; i < count; i++)
+    {
+        puts(result[i]);
+        free(result[i]);
+    }
     free(result);
-    free(used);
+    return 0;
 }

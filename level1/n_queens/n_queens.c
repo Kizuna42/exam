@@ -44,4 +44,4 @@ int main(int ac , char **argv)
     int *tab = calloc(sizeof(int) , n);
     solve(tab ,n,0);
     return 0;
-}
+} 

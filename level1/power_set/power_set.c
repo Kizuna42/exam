@@ -1,59 +1,45 @@
-#include <unistd.h>
-#include <stdlib.h>
 #include <stdio.h>
-void print_set(int *tab, int size)
-{
-    int i = 0;
-    while (i < size)
-    {
-        printf("%d", tab[i]);
-        i++;
-    if ( i < size)
-            printf(" ");
-    }
-    printf("\n");
-}
+#include <stdlib.h>
 
-void find_subsets(int *tab, int size, int target, int index, int *subset, int subset_size, int current_sum)
+void solve(int *arr, int n, int target, int idx, int *subset, int size, int sum)
 {
-    if (index == size)
+    if (sum == target)
     {
-        if (current_sum == target)
-            print_set(subset, subset_size);
-        return;
+        for (int i = 0; i < size; i++)
+        {
+            printf("%d", subset[i]);
+            if (i < size - 1) printf(" ");
+        }
+        printf("\n");
     }
-
-    find_subsets(tab, size, target, index + 1, subset, subset_size, current_sum);
+    if (idx >= n || sum > target) return;
     
-    subset[subset_size] = tab[index];
-    find_subsets(tab, size, target, index + 1, subset, subset_size + 1, current_sum + tab[index]);
-}
-
-void powerset(int *tab, int size, int target)
-{
-    int *subset = malloc(sizeof(int) * size);
-    find_subsets(tab, size, target, 0, subset, 0, 0);
-    free(subset);
+    subset[size] = arr[idx];
+    solve(arr, n, target, idx + 1, subset, size + 1, sum + arr[idx]);
+    solve(arr, n, target, idx + 1, subset, size, sum);
 }
 
 int main(int ac, char **av)
 {
-    if (ac < 3)
-        return 1;
-
+    if (ac < 2) return 1;
     int target = atoi(av[1]);
     int n = ac - 2;
-
-    int *tab = malloc(sizeof(int) * n);
-    int i = 0;
-    while (i < n)
+    
+    if (n == 0)
     {
-        tab[i] = atoi(av[i + 2]);
-        i++;
+        if (target == 0) printf("\n");
+        return 0;
     }
-
-    powerset(tab, n, target);
-    free(tab);
-
+    
+    int *arr = malloc(n * sizeof(int));
+    int *subset = malloc(n * sizeof(int));
+    
+    for (int i = 0; i < n; i++)
+        arr[i] = atoi(av[i + 2]);
+    
+    solve(arr, n, target, 0, subset, 0, 0);
+    
+    free(arr);
+    free(subset);
     return 0;
-}
+} 
