@@ -59,7 +59,8 @@ ssize_t file_size(FILE *file)
     errno = 0;
     for (ret = 0; getline(&buffer, &n, file) != -1; ret++);
     free(buffer);
-    if (errno || fseek(file, 0, SEEK_SET)) return -1;
+    if (errno) return -1;
+    if (file != stdin && fseek(file, 0, SEEK_SET)) return -1;
     return ret;
 }
 
@@ -78,13 +79,42 @@ int main(int ac, char **av)
     FILE *file = stdin;
     if (ac > 1) { filename = av[1]; file = fopen(filename, "r"); }
     if (!file) { fprintf(stderr, "Error opening %s\n", filename); return 1; }
-    ssize_t size = file_size(file);
-    if (size <= 0) { fprintf(stderr, "Error reading %s\n", filename); fclose(file); return 1; }
-    float (*array)[2] = calloc(size, sizeof(float[2]));
-    if (!array) { fprintf(stderr, "Error allocating memory\n"); fclose(file); return 1; }
-    if (retrieve_file(array, file) == -1) { fprintf(stderr, "Error reading %s\n", filename); fclose(file); free(array); return 1; }
-    if (ac > 1) fclose(file);
-    fprintf(stdout, "%.2f\n", tsp(array, size));
-    free(array);
+    
+    if (file == stdin)
+    {
+        // For stdin, read dynamically
+        float (*array)[2] = NULL;
+        size_t capacity = 0, size = 0;
+        float x, y;
+        
+        while (fscanf(file, "%f, %f", &x, &y) == 2)
+        {
+            if (size >= capacity)
+            {
+                capacity = capacity ? capacity * 2 : 8;
+                float (*new_array)[2] = realloc(array, capacity * sizeof(float[2]));
+                if (!new_array) { free(array); fprintf(stderr, "Error allocating memory\n"); return 1; }
+                array = new_array;
+            }
+            array[size][0] = x;
+            array[size][1] = y;
+            size++;
+        }
+        
+        if (size == 0) { free(array); fprintf(stderr, "Error reading %s\n", filename); return 1; }
+        fprintf(stdout, "%.2f\n", tsp(array, size));
+        free(array);
+    }
+    else
+    {
+        ssize_t size = file_size(file);
+        if (size <= 0) { fprintf(stderr, "Error reading %s\n", filename); fclose(file); return 1; }
+        float (*array)[2] = calloc(size, sizeof(float[2]));
+        if (!array) { fprintf(stderr, "Error allocating memory\n"); fclose(file); return 1; }
+        if (retrieve_file(array, file) == -1) { fprintf(stderr, "Error reading %s\n", filename); fclose(file); free(array); return 1; }
+        fclose(file);
+        fprintf(stdout, "%.2f\n", tsp(array, size));
+        free(array);
+    }
     return 0;
 } 

@@ -29,22 +29,24 @@ static void dfs(const char *s, int i, int open, int close, int balance, char *bu
         buf[k]=c; dfs(s, i+1, open, close, balance, buf, k+1); return;
     }
 
-    // 削除しない分岐
     if (c=='(')
     {
-        buf[k]='(';
-        dfs(s, i+1, open, close, balance+1, buf, k+1);
-        // 削除分岐（位置保持の空白出力のため、重複抑制は不要）
+        // 削除分岐
         if (open>0)
         {   buf[k]=' '; dfs(s, i+1, open-1, close, balance, buf, k+1); }
+        // 削除しない分岐
+        buf[k]='(';
+        dfs(s, i+1, open, close, balance+1, buf, k+1);
     }
     else // ')'
     {
+        // 削除しない分岐（バランスが取れている場合のみ）
         if (balance>0)
         {
             buf[k]=')';
             dfs(s, i+1, open, close, balance-1, buf, k+1);
         }
+        // 削除分岐
         if (close>0)
         {   buf[k]=' '; dfs(s, i+1, open, close-1, balance, buf, k+1); }
     }

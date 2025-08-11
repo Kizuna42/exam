@@ -25,7 +25,8 @@ static void solve(int *tab, int n, int col)
         return;
     }
     for (int i = 0; i < n; i++)
-        if (is_safe(tab, col, i)) { tab[col] = i; solve(tab, n, col + 1); }
+        if (is_safe(tab, col, i))
+        { tab[col] = i; solve(tab, n, col + 1); }
 }
 
 int main(int ac, char **argv)
