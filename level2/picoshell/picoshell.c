@@ -4,42 +4,55 @@
 
 int picoshell(char **cmds[])
 {
-    int i = 0, prev_pipe = -1;
-    pid_t *pids;
-    
-    // Count commands
-    while (cmds[i]) i++;
-    if (i == 0) return 0;
-    
-    pids = malloc(i * sizeof(pid_t));
-    if (!pids) return 1;
-    
-    for (int j = 0; j < i; j++)
+    int count = 0;
+    while (cmds[count]) count++;
+    if (count == 0) return 0;
+
+    int prev_read = -1;
+    for (int i = 0; i < count; i++)
     {
-        int pipefd[2];
-        if (j < i - 1 && pipe(pipefd) == -1) { free(pids); return 1; }
-        
+        int pipefd[2] = {-1, -1};
+        if (i < count - 1 && pipe(pipefd) == -1)
+        {
+            if (prev_read != -1) close(prev_read);
+            return 1;
+        }
+
         pid_t pid = fork();
-        if (pid == -1) { free(pids); return 1; }
-        
+        if (pid == -1)
+        {
+            if (pipefd[0] != -1) { close(pipefd[0]); close(pipefd[1]); }
+            if (prev_read != -1) close(prev_read);
+            return 1;
+        }
+
         if (pid == 0)
         {
-            if (prev_pipe != -1) { dup2(prev_pipe, 0); close(prev_pipe); }
-            if (j < i - 1) { dup2(pipefd[1], 1); close(pipefd[0]); close(pipefd[1]); }
-            execvp(cmds[j][0], cmds[j]);
+            if (prev_read != -1)
+            {
+                dup2(prev_read, 0);
+                close(prev_read);
+            }
+            if (i < count - 1)
+            {
+                dup2(pipefd[1], 1);
+                close(pipefd[0]);
+                close(pipefd[1]);
+            }
+            execvp(cmds[i][0], cmds[i]);
             exit(1);
         }
-        
-        pids[j] = pid;
-        if (prev_pipe != -1) close(prev_pipe);
-        if (j < i - 1) { close(pipefd[1]); prev_pipe = pipefd[0]; }
+
+        if (prev_read != -1) close(prev_read);
+        if (i < count - 1)
+        {
+            close(pipefd[1]);
+            prev_read = pipefd[0];
+        }
     }
-    
-    if (prev_pipe != -1) close(prev_pipe);
-    
-    for (int j = 0; j < i; j++)
-        waitpid(pids[j], NULL, 0);
-    
-    free(pids);
+
+    if (prev_read != -1) close(prev_read);
+    for (int i = 0; i < count; i++)
+        wait(NULL);
     return 0;
-} 
+}

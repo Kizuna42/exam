@@ -5,23 +5,35 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+#include <stdlib.h>
+
+static void alarm_handler(int sig){ (void)sig; }
 
 int sandbox(void (*f)(void), unsigned int timeout, bool verbose)
 {
     pid_t pid = fork();
     if (pid == -1) return -1;
-    
+
     if (pid == 0)
     {
         f();
         exit(0);
     }
-    
+
+    struct sigaction sa_old, sa_new;
+    memset(&sa_new, 0, sizeof(sa_new));
+    sa_new.sa_handler = alarm_handler;
+    sigemptyset(&sa_new.sa_mask);
+    sa_new.sa_flags = 0;
+    if (sigaction(SIGALRM, &sa_new, &sa_old) == -1)
+        return -1;
+
     alarm(timeout);
     int status;
     pid_t result = waitpid(pid, &status, 0);
     alarm(0);
-    
+    sigaction(SIGALRM, &sa_old, NULL);
+
     if (result == -1)
     {
         if (errno == EINTR)
@@ -33,7 +45,7 @@ int sandbox(void (*f)(void), unsigned int timeout, bool verbose)
         }
         return -1;
     }
-    
+
     if (WIFEXITED(status))
     {
         int exit_code = WEXITSTATUS(status);
@@ -42,18 +54,14 @@ int sandbox(void (*f)(void), unsigned int timeout, bool verbose)
             if (verbose) printf("Nice function!\n");
             return 1;
         }
-        else
-        {
-            if (verbose) printf("Bad function: exited with code %d\n", exit_code);
-            return 0;
-        }
+        if (verbose) printf("Bad function: exited with code %d\n", exit_code);
+        return 0;
     }
-    else if (WIFSIGNALED(status))
+    if (WIFSIGNALED(status))
     {
         int sig = WTERMSIG(status);
         if (verbose) printf("Bad function: %s\n", strsignal(sig));
         return 0;
     }
-    
     return 0;
-} 
+}

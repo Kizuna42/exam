@@ -64,10 +64,9 @@ int	expect(FILE *stream, char c)
 int parse_string(FILE *stream, char **str)
 {
     if (!expect(stream, '"')) return 0;
-    
-    char *buf = malloc(1000);
-    int len = 0;
-    
+    size_t cap = 16, len = 0;
+    char *buf = (char *)malloc(cap);
+    if (!buf) return 0;
     while (peek(stream) != '"' && peek(stream) != EOF)
     {
         char c = getc(stream);
@@ -76,9 +75,15 @@ int parse_string(FILE *stream, char **str)
             c = getc(stream);
             if (c == EOF) { free(buf); unexpected(stream); return 0; }
         }
+        if (len + 1 >= cap)
+        {
+            cap <<= 1;
+            char *nb = (char *)realloc(buf, cap);
+            if (!nb) { free(buf); return 0; }
+            buf = nb;
+        }
         buf[len++] = c;
     }
-    
     if (!expect(stream, '"')) { free(buf); return 0; }
     buf[len] = '\0';
     *str = buf;
@@ -96,23 +101,30 @@ int parse_value(FILE *stream, json *dst);
 int parse_map(FILE *stream, json *dst)
 {
     if (!expect(stream, '{')) return 0;
-    
+
     dst->type = MAP;
-    dst->map.data = malloc(100 * sizeof(pair));
+    dst->map.data = NULL;
     dst->map.size = 0;
-    
+    size_t cap = 0;
+
     if (accept(stream, '}')) return 1;
-    
+
     do {
+        if (dst->map.size == cap)
+        {
+            cap = cap ? cap << 1 : 4;
+            pair *np = (pair *)realloc(dst->map.data, cap * sizeof(pair));
+            if (!np) return 0;
+            dst->map.data = np;
+        }
         char *key;
         if (!parse_string(stream, &key)) return 0;
-        if (!expect(stream, ':')) return 0;
-        
+        if (!expect(stream, ':')) { free(key); return 0; }
         dst->map.data[dst->map.size].key = key;
         if (!parse_value(stream, &dst->map.data[dst->map.size].value)) return 0;
         dst->map.size++;
     } while (accept(stream, ','));
-    
+
     return expect(stream, '}');
 }
 

@@ -1,70 +1,61 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+// Allowed functions: puts, write
+// 仕様: 最小削除でバランス化。削除は空白 ' ' に置換し、全解を出力。重複は同一連続括弧で同位置を複数削除しないことで抑制。
 
-int is_valid(char *s)
+#include <stdio.h>
+
+static int str_len(const char *s){ int i=0; while(s[i]) i++; return i; }
+
+static int min_removals(const char *s, int *open_rem, int *close_rem)
 {
-    int count = 0;
+    int open = 0, close = 0;
     for (int i = 0; s[i]; i++)
     {
-        if (s[i] == '(') count++;
-        else if (s[i] == ')') count--;
-        if (count < 0) return 0;
+        if (s[i] == '(') open++;
+        else if (s[i] == ')') { if (open>0) open--; else close++; }
     }
-    return count == 0;
+    *open_rem = open; *close_rem = close; return open+close;
 }
 
-void solve(char *s, int idx, int open_rem, int close_rem, char *current, int pos, char **results, int *count)
+static void dfs(const char *s, int i, int open, int close, int balance, char *buf, int k)
 {
-    if (idx == strlen(s))
+    if (!s[i])
     {
-        if (open_rem == 0 && close_rem == 0 && is_valid(current))
-        {
-            current[pos] = '\0';
-            for (int i = 0; i < *count; i++)
-                if (strcmp(results[i], current) == 0) return;
-            results[*count] = malloc(strlen(current) + 1);
-            strcpy(results[*count], current);
-            (*count)++;
-        }
+        if (open==0 && close==0 && balance==0) { buf[k]='\0'; puts(buf); }
         return;
     }
-    char ch = s[idx];
-    if ((ch == '(' && open_rem > 0) || (ch == ')' && close_rem > 0))
+    char c = s[i];
+    if (c != '(' && c != ')')
     {
-        current[pos] = ' ';
-        solve(s, idx + 1, (ch == '(') ? open_rem - 1 : open_rem, 
-        (ch == ')') ? close_rem - 1 : close_rem, current, pos + 1, results, count);
+        buf[k]=c; dfs(s, i+1, open, close, balance, buf, k+1); return;
     }
-    current[pos] = ch;
-    solve(s, idx + 1, open_rem, close_rem, current, pos + 1, results, count);
+
+    // 削除しない分岐
+    if (c=='(')
+    {
+        buf[k]='(';
+        dfs(s, i+1, open, close, balance+1, buf, k+1);
+        // 削除分岐（位置保持の空白出力のため、重複抑制は不要）
+        if (open>0)
+        {   buf[k]=' '; dfs(s, i+1, open-1, close, balance, buf, k+1); }
+    }
+    else // ')'
+    {
+        if (balance>0)
+        {
+            buf[k]=')';
+            dfs(s, i+1, open, close, balance-1, buf, k+1);
+        }
+        if (close>0)
+        {   buf[k]=' '; dfs(s, i+1, open, close-1, balance, buf, k+1); }
+    }
 }
 
 int main(int ac, char **av)
 {
     if (ac != 2) return 1;
-    char *s = av[1];
-    int len = strlen(s);
-    int open_rem = 0, close_rem = 0;
-    for (int i = 0; i < len; i++)
-    {
-        if (s[i] == '(') open_rem++;
-        else if (s[i] == ')')
-        {
-            if (open_rem > 0) open_rem--;
-            else close_rem++;
-        }
-    }
-    char **results = malloc(1000 * sizeof(char*));
-    char *current = malloc(len + 1);
-    int count = 0;
-    solve(s, 0, open_rem, close_rem, current, 0, results, &count);
-    for (int i = 0; i < count; i++)
-    {
-        puts(results[i]);
-        free(results[i]);
-    }
-    free(results);
-    free(current);
+    int open_rem=0, close_rem=0; (void)min_removals(av[1], &open_rem, &close_rem);
+    int n = str_len(av[1]);
+    char buf[n + 1];
+    dfs(av[1], 0, open_rem, close_rem, 0, buf, 0);
     return 0;
-} 
+}

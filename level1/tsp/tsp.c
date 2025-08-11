@@ -77,14 +77,14 @@ int main(int ac, char **av)
     char *filename = "stdin";
     FILE *file = stdin;
     if (ac > 1) { filename = av[1]; file = fopen(filename, "r"); }
-    if (!file) { fprintf(stderr, "Error opening %s: %m\n", filename); return 1; }
+    if (!file) { fprintf(stderr, "Error opening %s\n", filename); return 1; }
     ssize_t size = file_size(file);
-    if (size == -1) { fprintf(stderr, "Error reading %s: %m\n", filename); fclose(file); return 1; }
+    if (size <= 0) { fprintf(stderr, "Error reading %s\n", filename); fclose(file); return 1; }
     float (*array)[2] = calloc(size, sizeof(float[2]));
-    if (!array) { fprintf(stderr, "Error: %m\n"); fclose(file); return 1; }
-    if (retrieve_file(array, file) == -1) { fprintf(stderr, "Error reading %s: %m\n", av[1]); fclose(file); free(array); return 1; }
+    if (!array) { fprintf(stderr, "Error allocating memory\n"); fclose(file); return 1; }
+    if (retrieve_file(array, file) == -1) { fprintf(stderr, "Error reading %s\n", filename); fclose(file); free(array); return 1; }
     if (ac > 1) fclose(file);
-    printf("%.2f\n", tsp(array, size));
+    fprintf(stdout, "%.2f\n", tsp(array, size));
     free(array);
     return 0;
 } 

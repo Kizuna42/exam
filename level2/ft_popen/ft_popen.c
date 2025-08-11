@@ -1,9 +1,11 @@
 #include <unistd.h>
 #include <sys/wait.h>
+#include <stdlib.h>
 
 int ft_popen(const char *file, char *const argv[], char type)
 {
     if (type != 'r' && type != 'w') return -1;
+    if (!file || !argv || !argv[0]) return -1;
     
     int pipefd[2];
     if (pipe(pipefd) == -1) return -1;
