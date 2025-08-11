@@ -6,13 +6,16 @@ int ft_popen(const char *file, char *const argv[], char type)
 {
     if (type != 'r' && type != 'w') return -1;
     if (!file || !argv || !argv[0]) return -1;
-    
     int pipefd[2];
     if (pipe(pipefd) == -1) return -1;
-    
+
     pid_t pid = fork();
-    if (pid == -1) { close(pipefd[0]); close(pipefd[1]); return -1; }
-    
+    if (pid == -1)
+    {
+        close(pipefd[0]);
+        close(pipefd[1]);
+        return -1;
+    }
     if (pid == 0)
     {
         if (type == 'r')
@@ -30,7 +33,6 @@ int ft_popen(const char *file, char *const argv[], char type)
         execvp(file, argv);
         exit(1);
     }
-    
     if (type == 'r')
     {
         close(pipefd[1]);
@@ -41,4 +43,17 @@ int ft_popen(const char *file, char *const argv[], char type)
         close(pipefd[0]);
         return pipefd[1];
     }
-} 
+}
+
+/*
+int main()
+{
+    int  fd;
+    char *line;
+
+    fd = ft_popen("ls", (char *const []){"ls", NULL}, 'r');
+    while ((line = get_next_line(fd)))
+        ft_putstr(line);
+    return (0);
+}
+*/

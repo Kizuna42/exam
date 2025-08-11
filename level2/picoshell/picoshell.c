@@ -7,7 +7,6 @@ int picoshell(char **cmds[])
     int count = 0;
     while (cmds[count]) count++;
     if (count == 0) return 0;
-
     int prev_read = -1;
     for (int i = 0; i < count; i++)
     {
@@ -17,7 +16,6 @@ int picoshell(char **cmds[])
             if (prev_read != -1) close(prev_read);
             return 1;
         }
-
         pid_t pid = fork();
         if (pid == -1)
         {
@@ -25,7 +23,6 @@ int picoshell(char **cmds[])
             if (prev_read != -1) close(prev_read);
             return 1;
         }
-
         if (pid == 0)
         {
             if (prev_read != -1)
@@ -42,7 +39,6 @@ int picoshell(char **cmds[])
             execvp(cmds[i][0], cmds[i]);
             exit(1);
         }
-
         if (prev_read != -1) close(prev_read);
         if (i < count - 1)
         {
@@ -50,7 +46,6 @@ int picoshell(char **cmds[])
             prev_read = pipefd[0];
         }
     }
-
     if (prev_read != -1) close(prev_read);
     for (int i = 0; i < count; i++)
         wait(NULL);

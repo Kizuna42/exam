@@ -151,7 +151,9 @@ int parse_value(FILE *stream, json *dst)
 
 int argo(json *dst, FILE *stream)
 {
-    return parse_value(stream, dst);
+    if (parse_value(stream, dst))
+        return 1;
+    return -1;
 }
 
 void	free_json(json j)
@@ -212,12 +214,17 @@ int	main(int argc, char **argv)
 		return 1;
 	char *filename = argv[1];
 	FILE *stream = fopen(filename, "r");
+	if (!stream)
+		return 1;
 	json	file;
 	if (argo (&file, stream) != 1)
 	{
-		free_json(file);
+		fclose(stream);
 		return 1;
 	}
 	serialize(file);
 	printf("\n");
+	free_json(file);
+	fclose(stream);
+	return 0;
 } 

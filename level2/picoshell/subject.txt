@@ -21,8 +21,7 @@ close all the open fds before). otherwise the function must wait all child
 processes and return 0. You will find in this directory a file main.c which
 contain something to help you test your function.
 
-
-Examples: 
+Examples:
 ./picoshell /bin/ls "|" /usr/bin/grep picoshell
 picoshell
 ./picoshell echo 'squalala' "|" cat "|" sed 's/a/b/g'

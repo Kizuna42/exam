@@ -13,6 +13,11 @@
  * - alarm(): タイムアウト設定
  * - waitpid(): 子プロセスの状態監視
  * - シグナルハンドリング
+ * 
+ * 重要な制約: 
+ * - 許可関数のみ使用可能: fork, waitpid, exit, alarm, sigaction, kill, printf, strsignal,
+ *   errno, sigaddset, sigemptyset, sigfillset, sigdelset, sigismember
+ * - memset() は使用不可（許可関数リストにない）
  */
 
 #include <unistd.h>
@@ -20,8 +25,9 @@
 #include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <string.h>
 #include <errno.h>
+#include <stdlib.h>
+#include <string.h>
 
 /*
  * sandbox: 関数を安全に実行して結果を判定
@@ -46,14 +52,23 @@ int sandbox(void (*f)(void), unsigned int timeout, bool verbose)
         exit(0);  // 正常終了
     }
     
-    // 親プロセス: タイムアウト設定
+    // 親プロセス: シグナルハンドラー設定（SIG_IGNで無視）
+    struct sigaction sa_old, sa_new;
+    sigemptyset(&sa_new.sa_mask);
+    sa_new.sa_handler = SIG_IGN;
+    sa_new.sa_flags = 0;
+    if (sigaction(SIGALRM, &sa_new, &sa_old) == -1)
+        return -1;
+    
+    // タイムアウト設定
     alarm(timeout);
     
     int status;
     pid_t result = waitpid(pid, &status, 0);
     
-    // アラームを無効化
+    // アラーム無効化とシグナルハンドラー復元
     alarm(0);
+    sigaction(SIGALRM, &sa_old, NULL);
     
     // waitpid失敗の場合
     if (result == -1)
@@ -130,12 +145,14 @@ int sandbox(void (*f)(void), unsigned int timeout, bool verbose)
  * → 戻り値: 0
  * 
  * タイムアウト処理の詳細:
- * 1. alarm(timeout)でタイマー設定
- * 2. 子プロセスがtimeout秒以内に終了しない場合
- * 3. SIGALRMシグナルが親プロセスに送信される
- * 4. waitpid()がEINTRエラーで中断される
- * 5. kill(pid, SIGKILL)で子プロセスを強制終了
- * 6. waitpid()でゾンビプロセスを回収
+ * 1. sigaction()でSIGALRMハンドラーをSIG_IGN（無視）に設定
+ * 2. alarm(timeout)でタイマー設定
+ * 3. 子プロセスがtimeout秒以内に終了しない場合
+ * 4. SIGALRMシグナルが親プロセスに送信される
+ * 5. シグナルは無視されるがwaitpid()がEINTRエラーで中断される
+ * 6. kill(pid, SIGKILL)で子プロセスを強制終了
+ * 7. waitpid()でゾンビプロセスを回収
+ * 8. sigaction()で元のシグナルハンドラーを復元
  * 
  * プロセス状態の判定:
  * - WIFEXITED(status): 正常終了かチェック
@@ -145,8 +162,15 @@ int sandbox(void (*f)(void), unsigned int timeout, bool verbose)
  * 
  * 重要なポイント:
  * 1. fork()で親プロセスを保護
- * 2. alarm()でタイムアウト制御
- * 3. ゾンビプロセスの回避
- * 4. 適切なエラーハンドリング
- * 5. シグナルの種類に応じた詳細メッセージ
+ * 2. sigaction()による適切なシグナル制御
+ * 3. alarm()でタイムアウト制御
+ * 4. ゾンビプロセスの回避
+ * 5. 適切なエラーハンドリング
+ * 6. シグナルの種類に応じた詳細メッセージ
+ * 7. 許可関数の制約を遵守（memset使用不可）
+ * 
+ * 実装上の注意事項:
+ * - sigemptyset()で構造体を初期化（memsetの代替）
+ * - SIG_IGNでシグナルを無視設定
+ * - 元のシグナルハンドラーを必ず復元
  */

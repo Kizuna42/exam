@@ -13,6 +13,12 @@
  * 1. トークンを先読み（peek）
  * 2. 文法に従って再帰的に解析
  * 3. エラー時は適切なメッセージを出力
+ * 
+ * 重要な実装要件:
+ * - argo()関数は成功時1、失敗時-1を返す
+ * - 動的メモリ管理（parse_string, parse_map）
+ * - 適切なリソース管理（fopen/fclose, malloc/free）
+ * - エラーハンドリング時のメモリリーク防止
  */
 
 #include <stdio.h>
@@ -248,11 +254,13 @@ int parse_value(FILE *stream, json *dst)
  * 
  * @param dst: 解析結果を格納するJSON構造体
  * @param stream: 入力ストリーム
- * @return: 成功時1、失敗時-1
+ * @return: 成功時1、失敗時-1（要件に従った戻り値）
  */
 int argo(json *dst, FILE *stream)
 {
-    return parse_value(stream, dst);
+    if (parse_value(stream, dst))
+        return 1;
+    return -1;
 }
 
 /*
@@ -332,12 +340,17 @@ int main(int argc, char **argv)
     
     char *filename = argv[1];
     FILE *stream = fopen(filename, "r");
+    
+    // ファイルオープンの失敗をチェック
+    if (!stream)
+        return 1;
+    
     json file;
     
     // JSON解析実行
     if (argo(&file, stream) != 1)
     {
-        free_json(file);
+        fclose(stream);  // ファイルを閉じる
         return 1;
     }
     
@@ -345,5 +358,37 @@ int main(int argc, char **argv)
     serialize(file);
     printf("\n");
     
+    // メモリ解放とファイルクローズ
+    free_json(file);
+    fclose(stream);
+    
     return 0;
 }
+
+/*
+ * 重要な実装注意事項とよくある間違い:
+ * 
+ * 1. 戻り値の制約:
+ *    - argo()は成功時1、失敗時-1を返すこと（内部関数とは異なる）
+ *    - parse_*()関数は成功時1、失敗時0を返す
+ * 
+ * 2. メモリ管理:
+ *    - parse_string()で動的メモリ確保、適切なサイズ調整
+ *    - parse_map()で動的配列管理、realloc()でサイズ拡張
+ *    - エラー時は確保済みメモリを必ず解放
+ * 
+ * 3. ファイル処理:
+ *    - fopen()の失敗をチェック
+ *    - 処理完了後は必ずfclose()
+ *    - エラー時も忘れずにfclose()
+ * 
+ * 4. エラーメッセージ:
+ *    - "Unexpected token '%c'\n" 形式
+ *    - EOF時は "Unexpected end of input\n"
+ *    - 正確な文字を出力（peek()の結果）
+ * 
+ * 5. メモリリーク対策:
+ *    - free_json()で再帰的に全メモリ解放
+ *    - main()で成功時もfree_json()呼び出し
+ *    - エラー処理時の適切なcleanup
+ */

@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gcc:*)",
+      "Bash(./n_queens 4)",
+      "Bash(./permutation \"abcd\")",
+      "Bash(./permutation \"abc\")",
+      "Bash(./power_set \"5 12 -2 3\" 10)",
+      "Bash(./tsp tsp_file.txt)",
+      "Bash(./power_set \"5 1 2 3 4\" 5)",
+      "Bash(./vbc \"3+4*5\")",
+      "Bash(./vbc \"(2+3)*4\")",
+      "Bash(cd:*)",
+      "Bash(./rip \"(((\")",
+      "Bash(./rip \"(())\")",
+      "Bash(./rip \"()())()\")",
+      "Bash(./rip \"(())\")",
+      "Bash(./rip \"(())\")",
+      "Bash(./rip \"()())()\")",
+      "Bash(git add:*)"
+    ],
+    "deny": []
+  }
+}
